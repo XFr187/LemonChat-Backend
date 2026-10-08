@@ -1,9 +1,13 @@
 {
-  "name": "lemonchat-edgeone",
+  "name": "lemonchat-backend",
   "version": "1.0.0",
   "private": true,
   "type": "module",
   "dependencies": {
     "pg": "^8.11.3"
+  },
+  "description": "Lemon Chat 后端（Node 容器版，Zeabur 部署）",
+  "scripts": {
+    "start": "node server.js"
   }
 }
