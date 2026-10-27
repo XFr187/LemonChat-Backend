@@ -1,5 +1,8 @@
 // Cloudflare Workers 入口：把 /api/xxx 转发给 cloud-functions/api/xxx.js 的 onRequest
 import { json } from "../cloud-functions/lib/http.js";
+import { ChatHub } from "./hub.js";
+
+export { ChatHub };
 import login from "../cloud-functions/api/login.js";
 import register from "../cloud-functions/api/register.js";
 import forgot from "../cloud-functions/api/forgot.js";
@@ -37,11 +40,15 @@ export default {
         headers: { "Content-Type": "text/plain; charset=UTF-8" },
       });
     }
+    if (url.pathname === "/ws") {
+      const stub = env.CHAT_HUB.get(env.CHAT_HUB.idFromName("global"));
+      return stub.fetch(request);
+    }
     const name = url.pathname.replace(/^\/api\//, "").replace(/\/+$/, "");
     const handler = routes[name];
     if (!handler) return json({ ok: false, error: "接口不存在" }, 404);
     try {
-      return await handler({ request });
+      return await handler({ request, env });
     } catch (e) {
       return json({ ok: false, error: "服务器开小差了" }, 500);
     }

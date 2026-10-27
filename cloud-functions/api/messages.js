@@ -33,6 +33,18 @@ export default async function onRequest(context) {
         [senderId, receiverId, content]
       );
       await db.query("UPDATE users SET last_seen=now() WHERE id IN ($1,$2)", [senderId, receiverId]);
+      // 实时推送：通知聊天枢纽把消息推给在线的双方
+      try {
+        if (context.env?.CHAT_HUB) {
+          const stub = context.env.CHAT_HUB.get(context.env.CHAT_HUB.idFromName("global"));
+          const time = new Date(r.rows[0].created_at).getTime();
+          const notify = { from: senderId, to: receiverId, content, time };
+          await stub.fetch(new Request("https://internal/notify", {
+            method: "POST",
+            body: JSON.stringify(notify),
+          }));
+        }
+      } catch {}
       return json({ ok: true, id: r.rows[0].id, created_at: r.rows[0].created_at });
     }
     return json({ ok: false, error: "只支持GET/POST" }, 405);
