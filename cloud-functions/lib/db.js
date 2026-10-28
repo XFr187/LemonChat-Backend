@@ -29,6 +29,14 @@ export function getPool() {
 export async function initDb() {
   if (dbReady) return;
   const db = getPool();
+  // 快速探测：表和列都齐就跳过建表（冷启动从 8 条 SQL 降到 2 条，省一大截）
+  try {
+    await db.query(`SELECT id, bio, is_official, reg_ip, reg_ua, last_seen FROM users LIMIT 1`);
+    await db.query(`SELECT 1 FROM group_members LIMIT 1`);
+    await db.query(`SELECT 1 FROM group_messages LIMIT 1`);
+    dbReady = true;
+    return;
+  } catch (_) { /* 缺表缺列，走全量初始化 */ }
   const statements = [
     `CREATE TABLE IF NOT EXISTS users (
       id SERIAL PRIMARY KEY,
