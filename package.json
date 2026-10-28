@@ -4,6 +4,7 @@
   "private": true,
   "type": "module",
   "dependencies": {
+    "@neondatabase/serverless": "^1.2.0",
     "pg": "^8.11.3",
     "wrangler": "^4.154.0"
   }
