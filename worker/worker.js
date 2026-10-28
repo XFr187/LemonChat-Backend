@@ -57,7 +57,8 @@ export default {
         return stub.fetch(request);
       }
       const name = url.pathname.replace(/^\/api\//, "").replace(/\/+$/, "");
-      const handler = routes[name];
+      // 支持子路径：admin/ban、groups/join、friendrequests/accept 等
+      const handler = routes[name] || routes[name.split("/")[0]];
       if (!handler) return json({ ok: false, error: "接口不存在" }, 404);
       return await handler({ request, env });
     } catch (e) {

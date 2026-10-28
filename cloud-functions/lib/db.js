@@ -32,6 +32,7 @@ export async function initDb() {
   // 快速探测：表和列都齐就跳过建表（冷启动从 8 条 SQL 降到 2 条，省一大截）
   try {
     await db.query(`SELECT id, bio, is_official, reg_ip, reg_ua, last_seen, avatar, banned_until FROM users LIMIT 1`);
+    await db.query(`SELECT id, parent_id, gtype, expires_at, open_join FROM groups LIMIT 1`);
     await db.query(`SELECT 1 FROM group_members LIMIT 1`);
     await db.query(`SELECT 1 FROM group_messages LIMIT 1`);
     await db.query(`SELECT 1 FROM friend_requests LIMIT 1`);
@@ -110,6 +111,10 @@ export async function initDb() {
   await db.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS reg_ua TEXT DEFAULT ''`);
   await db.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS last_seen TIMESTAMPTZ DEFAULT now()`);
   await db.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar TEXT DEFAULT ''`);
+  await db.query(`ALTER TABLE groups ADD COLUMN IF NOT EXISTS parent_id INTEGER`);
+  await db.query(`ALTER TABLE groups ADD COLUMN IF NOT EXISTS gtype TEXT DEFAULT 'normal'`);
+  await db.query(`ALTER TABLE groups ADD COLUMN IF NOT EXISTS expires_at TIMESTAMPTZ`);
+  await db.query(`ALTER TABLE groups ADD COLUMN IF NOT EXISTS open_join BOOLEAN DEFAULT false`);
   await db.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS banned_until TIMESTAMPTZ`);
   dbReady = true;
 }
