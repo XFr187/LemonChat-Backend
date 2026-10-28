@@ -3,13 +3,24 @@ import pg from "pg";
 let pool = null;
 let dbReady = false;
 
+// CF Workers 上 pg.Pool 的空闲连接会被平台掐掉，复用死连接会引发 1101 崩溃。
+// 改为每次查询开新连接用完即关（流量小，开销可忽略）。
 export function getPool() {
   if (!pool) {
-    pool = new pg.Pool({
-      connectionString: process.env.DATABASE_URL,
-      ssl: { rejectUnauthorized: false },
-      max: 3,
-    });
+    pool = {
+      async query(sql, params) {
+        const client = new pg.Client({
+          connectionString: process.env.DATABASE_URL,
+          ssl: { rejectUnauthorized: false },
+        });
+        await client.connect();
+        try {
+          return await client.query(sql, params);
+        } finally {
+          client.end().catch(() => {});
+        }
+      },
+    };
   }
   return pool;
 }
