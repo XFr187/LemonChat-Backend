@@ -2,6 +2,10 @@ import pg from "pg";
 
 let pool = null;
 let dbReady = false;
+let dbUrl = process.env?.DATABASE_URL || "";
+
+// Worker 入口会把 env.DATABASE_URL 传进来（不碰 process.env，避开 nodejs_compat 的坑）
+export function setDbUrl(url) { if (url) dbUrl = url; }
 
 // CF Workers 上 pg.Pool 的空闲连接会被平台掐掉，复用死连接会引发 1101 崩溃。
 // 改为每次查询开新连接用完即关（流量小，开销可忽略）。
@@ -10,7 +14,7 @@ export function getPool() {
     pool = {
       async query(sql, params) {
         const client = new pg.Client({
-          connectionString: process.env.DATABASE_URL,
+          connectionString: dbUrl,
           ssl: { rejectUnauthorized: false },
         });
         await client.connect();

@@ -1,5 +1,6 @@
 // Cloudflare Workers 入口：把 /api/xxx 转发给 cloud-functions/api/xxx.js 的 onRequest
 import { json } from "../cloud-functions/lib/http.js";
+import { setDbUrl } from "../cloud-functions/lib/db.js";
 import { ChatHub } from "./hub.js";
 
 export { ChatHub };
@@ -29,28 +30,27 @@ const routes = {
 
 export default {
   async fetch(request, env, ctx) {
-    // 让原有函数里的 process.env.DATABASE_URL 继续生效
-    if (!globalThis.process) globalThis.process = { env: {} };
-    globalThis.process.env.DATABASE_URL = env.DATABASE_URL;
-
-    const url = new URL(request.url);
-    if (url.pathname === "/" || url.pathname === "") {
-      return new Response("Lemon Chat backend is running 🍋", {
-        status: 200,
-        headers: { "Content-Type": "text/plain; charset=UTF-8" },
-      });
-    }
-    if (url.pathname === "/ws") {
-      const stub = env.CHAT_HUB.get(env.CHAT_HUB.idFromName("global"));
-      return stub.fetch(request);
-    }
-    const name = url.pathname.replace(/^\/api\//, "").replace(/\/+$/, "");
-    const handler = routes[name];
-    if (!handler) return json({ ok: false, error: "接口不存在" }, 404);
     try {
+      // 把数据库地址交给 db 模块（不走 process.env）
+      setDbUrl(env.DATABASE_URL);
+
+      const url = new URL(request.url);
+      if (url.pathname === "/" || url.pathname === "") {
+        return new Response("Lemon Chat backend is running 🍋", {
+          status: 200,
+          headers: { "Content-Type": "text/plain; charset=UTF-8" },
+        });
+      }
+      if (url.pathname === "/ws") {
+        const stub = env.CHAT_HUB.get(env.CHAT_HUB.idFromName("global"));
+        return stub.fetch(request);
+      }
+      const name = url.pathname.replace(/^\/api\//, "").replace(/\/+$/, "");
+      const handler = routes[name];
+      if (!handler) return json({ ok: false, error: "接口不存在" }, 404);
       return await handler({ request, env });
     } catch (e) {
-      return json({ ok: false, error: "服务器开小差了" }, 500);
+      return json({ ok: false, error: "入口开小差了: " + (e?.message || e) }, 500);
     }
   },
 };
