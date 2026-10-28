@@ -58,6 +58,6 @@ export default async function onRequest(context) {
 
     return json({ ok: false, error: "只支持GET/POST" }, 405);
   } catch (e) {
-    return json({ ok: false, error: "ERR3: " + (e?.message || String(e)) }, 500);
+    return json({ ok: false, error: "服务器开小差了" }, 500);
   }
 }
