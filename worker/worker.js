@@ -41,6 +41,9 @@ export default {
           headers: { "Content-Type": "text/plain; charset=UTF-8" },
         });
       }
+      if (url.pathname === "/debug") {
+        return json({ has: !!env.DATABASE_URL, len: (env.DATABASE_URL || "").length, keys: Object.keys(env) });
+      }
       if (url.pathname === "/ws") {
         const stub = env.CHAT_HUB.get(env.CHAT_HUB.idFromName("global"));
         return stub.fetch(request);
