@@ -23,6 +23,6 @@ export default async function onRequest(context) {
     if (!r.rows.length) return json({ ok: false, error: "用户不存在" }, 404);
     return json({ ok: true, user: r.rows[0] });
   } catch (e) {
-    return json({ ok: false, error: "服务器开小差了" }, 500);
+    return json({ ok: false, error: "ERR4: " + (e?.message || String(e)) }, 500);
   }
 }
