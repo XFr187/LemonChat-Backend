@@ -34,6 +34,6 @@ export default async function onRequest(context) {
     out.sort((a, b) => ((b.lastTime || 0) < (a.lastTime || 0) ? -1 : 1));
     return json({ ok: true, conversations: out });
   } catch (e) {
-    return json({ ok: false, error: "服务器开小差了" }, 500);
+    return json({ ok: false, error: "ERR: " + (e?.message || String(e)) }, 500);
   }
 }
