@@ -15,6 +15,8 @@ import friends from "../cloud-functions/api/friends.js";
 import admin from "../cloud-functions/api/admin.js";
 import groups from "../cloud-functions/api/groups.js";
 import groupmessages from "../cloud-functions/api/groupmessages.js";
+import friendrequests from "../cloud-functions/api/friendrequests.js";
+import avatar from "../cloud-functions/api/avatar.js";
 import del from "../cloud-functions/api/delete.js";
 
 const routes = {
@@ -29,6 +31,8 @@ const routes = {
   admin,
   groups,
   groupmessages,
+  friendrequests,
+  avatar,
   delete: del,
 };
 

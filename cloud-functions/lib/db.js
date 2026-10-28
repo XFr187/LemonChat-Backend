@@ -31,9 +31,11 @@ export async function initDb() {
   const db = getPool();
   // 快速探测：表和列都齐就跳过建表（冷启动从 8 条 SQL 降到 2 条，省一大截）
   try {
-    await db.query(`SELECT id, bio, is_official, reg_ip, reg_ua, last_seen FROM users LIMIT 1`);
+    await db.query(`SELECT id, bio, is_official, reg_ip, reg_ua, last_seen, avatar, banned_until FROM users LIMIT 1`);
     await db.query(`SELECT 1 FROM group_members LIMIT 1`);
     await db.query(`SELECT 1 FROM group_messages LIMIT 1`);
+    await db.query(`SELECT 1 FROM friend_requests LIMIT 1`);
+    await db.query(`SELECT 1 FROM blocks LIMIT 1`);
     dbReady = true;
     return;
   } catch (_) { /* 缺表缺列，走全量初始化 */ }
@@ -85,6 +87,20 @@ export async function initDb() {
       content TEXT NOT NULL,
       created_at TIMESTAMPTZ DEFAULT now()
     )`,
+    `CREATE TABLE IF NOT EXISTS friend_requests (
+      id SERIAL PRIMARY KEY,
+      from_id INTEGER NOT NULL REFERENCES users(id),
+      to_id INTEGER NOT NULL REFERENCES users(id),
+      message TEXT DEFAULT '',
+      status TEXT DEFAULT 'pending',
+      created_at TIMESTAMPTZ DEFAULT now()
+    )`,
+    `CREATE TABLE IF NOT EXISTS blocks (
+      user_id INTEGER NOT NULL REFERENCES users(id),
+      blocked_id INTEGER NOT NULL REFERENCES users(id),
+      created_at TIMESTAMPTZ DEFAULT now(),
+      UNIQUE (user_id, blocked_id)
+    )`,
   ];
   for (const s of statements) await db.query(s);
   // 老库补列
@@ -93,5 +109,7 @@ export async function initDb() {
   await db.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS reg_ip TEXT DEFAULT ''`);
   await db.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS reg_ua TEXT DEFAULT ''`);
   await db.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS last_seen TIMESTAMPTZ DEFAULT now()`);
+  await db.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS avatar TEXT DEFAULT ''`);
+  await db.query(`ALTER TABLE users ADD COLUMN IF NOT EXISTS banned_until TIMESTAMPTZ`);
   dbReady = true;
 }

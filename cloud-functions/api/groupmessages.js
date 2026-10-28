@@ -13,8 +13,10 @@ export default async function onRequest(context) {
       const { groupId, senderId, content } = await readBody(request);
       if (!groupId || !senderId || !content)
         return json({ ok: false, error: "参数不齐" }, 400);
-      if (typeof content !== "string" || content.length > 2000)
-        return json({ ok: false, error: "消息过长" }, 400);
+      const isImage = typeof content === "string" && content.startsWith("data:image/");
+      const maxLen = isImage ? 600000 : 2000;
+      if (typeof content !== "string" || content.length > maxLen)
+        return json({ ok: false, error: isImage ? "图片过大" : "消息过长" }, 400);
       // 必须是群成员才能发言
       const m = await db.query(
         "SELECT 1 FROM group_members WHERE group_id=$1 AND user_id=$2",
@@ -57,7 +59,7 @@ export default async function onRequest(context) {
       const after = Number(q.after || 0);
       if (!groupId) return json({ ok: false, error: "缺groupId" }, 400);
       const r = await db.query(
-        `SELECT gm.id, gm.sender_id, gm.content, gm.created_at, u.nickname
+        `SELECT gm.id, gm.sender_id, gm.content, gm.created_at, u.nickname, u.avatar, u.is_official
          FROM group_messages gm JOIN users u ON u.id = gm.sender_id
          WHERE gm.group_id=$1 AND gm.id > $2 ORDER BY gm.id ASC LIMIT 300`,
         [groupId, after]
@@ -66,7 +68,8 @@ export default async function onRequest(context) {
         ok: true,
         messages: r.rows.map((x) => ({
           id: x.id, senderId: x.sender_id, content: x.content,
-          nickname: x.nickname, time: new Date(x.created_at).getTime(),
+          nickname: x.nickname, avatar: x.avatar || "", is_official: x.is_official,
+          time: new Date(x.created_at).getTime(),
         })),
       });
     }

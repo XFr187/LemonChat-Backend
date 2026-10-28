@@ -1,42 +1,64 @@
 import { getPool, initDb } from "../lib/db.js";
 import { json, queryParams, readBody } from "../lib/http.js";
 
-// GET /api/friends?userId=1  好友列表
-// POST /api/friends {userId, friendId}  加好友（双向）
+// GET  /api/friends?userId=1                  好友列表
+// POST /api/friends {action:"delete"|"block"|"unblock"|"listBlocked", ...}
 export default async function onRequest(context) {
   const { request } = context;
   try {
     await initDb();
     const db = getPool();
+
     if (request.method === "GET") {
       const userId = Number(queryParams(request).userId);
       if (!userId) return json({ ok: false, error: "缺userId" }, 400);
       const r = await db.query(
-        `SELECT u.id, u.username, u.nickname, u.bio, u.is_official FROM friendships f
+        `SELECT u.id, u.username, u.nickname, u.bio, u.is_official, u.avatar FROM friendships f
          JOIN users u ON u.id = (CASE WHEN f.user_id=$1 THEN f.friend_id ELSE f.user_id END)
          WHERE f.user_id=$1 OR f.friend_id=$1 ORDER BY u.id`,
         [userId]
       );
       return json({ ok: true, friends: r.rows });
     }
+
     if (request.method === "POST") {
-      const { userId, friendId } = await readBody(request);
-      if (!userId || !friendId || userId === friendId)
-        return json({ ok: false, error: "参数不对" }, 400);
-      const u = await db.query("SELECT id FROM users WHERE id IN ($1,$2)", [userId, friendId]);
-      if (u.rows.length < 2) return json({ ok: false, error: "用户不存在" }, 400);
-      await db.query(
-        `INSERT INTO friendships (user_id, friend_id)
-         SELECT LEAST($1,$2), GREATEST($1,$2)
-         WHERE NOT EXISTS (
-           SELECT 1 FROM friendships
-           WHERE (user_id=$1 AND friend_id=$2) OR (user_id=$2 AND friend_id=$1)
-         )`,
-        [userId, friendId]
-      );
-      return json({ ok: true });
+      const { action, userId, friendId, targetId } = await readBody(request);
+      if (!userId) return json({ ok: false, error: "缺userId" }, 400);
+
+      if (action === "delete") {
+        if (!friendId) return json({ ok: false, error: "缺friendId" }, 400);
+        await db.query(
+          "DELETE FROM friendships WHERE (user_id=$1 AND friend_id=$2) OR (user_id=$2 AND friend_id=$1)",
+          [Number(userId), Number(friendId)]
+        );
+        return json({ ok: true });
+      }
+
+      if (action === "block") {
+        if (!targetId) return json({ ok: false, error: "缺targetId" }, 400);
+        await db.query(
+          "INSERT INTO blocks (user_id, blocked_id) VALUES ($1,$2) ON CONFLICT DO NOTHING",
+          [Number(userId), Number(targetId)]
+        );
+        return json({ ok: true });
+      }
+
+      if (action === "unblock") {
+        if (!targetId) return json({ ok: false, error: "缺targetId" }, 400);
+        await db.query("DELETE FROM blocks WHERE user_id=$1 AND blocked_id=$2", [Number(userId), Number(targetId)]);
+        return json({ ok: true });
+      }
+
+      if (action === "listBlocked") {
+        const r = await db.query(
+          `SELECT u.id, u.username, u.nickname, u.is_official FROM blocks b
+           JOIN users u ON u.id = b.blocked_id WHERE b.user_id=$1 ORDER BY u.id`,
+          [Number(userId)]
+        );
+        return json({ ok: true, blocked: r.rows });
+      }
     }
-    return json({ ok: false, error: "只支持GET/POST" }, 405);
+    return json({ ok: false, error: "不支持的操作" }, 400);
   } catch (e) {
     return json({ ok: false, error: "服务器开小差了" }, 500);
   }

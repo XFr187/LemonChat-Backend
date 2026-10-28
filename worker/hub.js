@@ -9,7 +9,7 @@ export class ChatHub {
   async fetch(request) {
     const url = new URL(request.url);
 
-    // HTTP 发消息后的实时推送：{type:"new_message"|"new_group_message", ...}
+    // HTTP 发消息后的实时推送：{type:"new_message"|"new_group_message"|"force_logout", ...}
     if (url.pathname === "/notify") {
       try {
         const d = await request.json();
@@ -17,6 +17,8 @@ export class ChatHub {
         let targets = [];
         if (d.type === "new_group_message") {
           targets = (d.to || []).filter((id) => id !== d.from);
+        } else if (d.type === "force_logout") {
+          targets = [d.to];
         } else {
           targets = [d.from, d.to];
         }
