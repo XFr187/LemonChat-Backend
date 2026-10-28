@@ -9,12 +9,18 @@ export class ChatHub {
   async fetch(request) {
     const url = new URL(request.url);
 
-    // HTTP 发消息后的实时推送：{from, to, content, time}
+    // HTTP 发消息后的实时推送：{type:"new_message"|"new_group_message", ...}
     if (url.pathname === "/notify") {
       try {
-        const { from, to, content, time } = await request.json();
-        const payload = JSON.stringify({ type: "new_message", from, to, content, time });
-        for (const id of [from, to]) {
+        const d = await request.json();
+        const payload = JSON.stringify(d);
+        let targets = [];
+        if (d.type === "new_group_message") {
+          targets = (d.to || []).filter((id) => id !== d.from);
+        } else {
+          targets = [d.from, d.to];
+        }
+        for (const id of targets) {
           for (const sock of this.state.getWebSockets(`user:${id}`)) {
             try { sock.send(payload); } catch {}
           }

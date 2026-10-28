@@ -58,6 +58,25 @@ export async function initDb() {
       content TEXT NOT NULL,
       created_at TIMESTAMPTZ DEFAULT now()
     )`,
+    `CREATE TABLE IF NOT EXISTS groups (
+      id SERIAL PRIMARY KEY,
+      name TEXT NOT NULL,
+      owner_id INTEGER NOT NULL REFERENCES users(id),
+      created_at TIMESTAMPTZ DEFAULT now()
+    )`,
+    `CREATE TABLE IF NOT EXISTS group_members (
+      group_id INTEGER NOT NULL REFERENCES groups(id),
+      user_id INTEGER NOT NULL REFERENCES users(id),
+      joined_at TIMESTAMPTZ DEFAULT now(),
+      UNIQUE (group_id, user_id)
+    )`,
+    `CREATE TABLE IF NOT EXISTS group_messages (
+      id SERIAL PRIMARY KEY,
+      group_id INTEGER NOT NULL REFERENCES groups(id),
+      sender_id INTEGER NOT NULL REFERENCES users(id),
+      content TEXT NOT NULL,
+      created_at TIMESTAMPTZ DEFAULT now()
+    )`,
   ];
   for (const s of statements) await db.query(s);
   // 老库补列
