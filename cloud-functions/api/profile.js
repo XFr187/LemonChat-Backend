@@ -1,5 +1,5 @@
 import { getPool, initDb } from "../lib/db.js";
-import { json, queryParams } from "../lib/http.js";
+import { json, queryParams, readBody } from "../lib/http.js";
 
 // GET /api/profile?userId=1
 // POST /api/profile {userId, avatar}  更新头像（base64 dataURL，≤200KB）
@@ -23,6 +23,6 @@ export default async function onRequest(context) {
     if (!r.rows.length) return json({ ok: false, error: "用户不存在" }, 404);
     return json({ ok: true, user: r.rows[0] });
   } catch (e) {
-    return json({ ok: false, error: "ERR4: " + (e?.message || String(e)) }, 500);
+    return json({ ok: false, error: "服务器开小差了" }, 500);
   }
 }
